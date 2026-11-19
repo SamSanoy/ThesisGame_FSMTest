@@ -8,7 +8,11 @@ public class DisengagementCounter : MonoBehaviour
 
     [Header("Detection Settings")]
     [SerializeField] private float exitBuffer = 0.2f;
-    [SerializeField] private float disengagementDelay = 0.3f;
+    [Tooltip("How long the player must stay beyond engagementRange + exitBuffer before an exit counts. Set to 0 during testing to count immediately on crossing the buffered boundary.")]
+    [SerializeField, Min(0f)] private float disengagementDelay = 0.3f;
+
+    [Header("Debug (enable while testing)")]
+    [SerializeField] private bool logCounterEvents = false;
 
     [Header("References")]
     [SerializeField] private Transform player;
@@ -18,6 +22,10 @@ public class DisengagementCounter : MonoBehaviour
     private float outsideTimer = 0f;
 
     public int DisengagementCount => disengagementCount;
+    public int ActivationThreshold => activationThreshold;
+    public float EngagementRange => engagementRange;
+    public float ExitThreshold => engagementRange + exitBuffer;
+    public bool IsEngaged => isEngaged;
 
     public bool IsReady =>
         disengagementCount >= activationThreshold;
@@ -26,6 +34,7 @@ public class DisengagementCounter : MonoBehaviour
     {
         if (player == null)
         {
+            Debug.LogError("DisengagementCounter: Player reference missing; counter disabled.", this);
             enabled = false;
             return;
         }
@@ -36,6 +45,10 @@ public class DisengagementCounter : MonoBehaviour
         );
 
         isEngaged = distance <= engagementRange;
+        Log("Start: " + (isEngaged ? "engaged" : "waiting to enter close range") +
+            " (distance " + distance.ToString("F2") + ", engagementRange " + engagementRange.ToString("F2") +
+            ", exit boundary " + ExitThreshold.ToString("F2") +
+            ", threshold " + activationThreshold + ").");
     }
 
     void Update()
@@ -51,14 +64,14 @@ public class DisengagementCounter : MonoBehaviour
             {
                 isEngaged = true;
                 outsideTimer = 0f;
-
-                //Debug.Log("Player entered engagement range.");
+                Log("Re-engaged at distance " + distance.ToString("F2") +
+                    ". Another disengagement can now be counted.");
             }
 
             return;
         }
 
-        if (distance <= engagementRange + exitBuffer)
+        if (distance <= ExitThreshold)
         {
             outsideTimer = 0f;
             return;
@@ -73,27 +86,32 @@ public class DisengagementCounter : MonoBehaviour
         outsideTimer = 0f;
 
         if (IsReady)
+        {
+            Log("Exit detected while Long-Range is already ready; count remains " +
+                disengagementCount + "/" + activationThreshold + ".");
             return;
+        }
 
         disengagementCount++;
-
-        /*Debug.Log(
-            "Disengagement Count: " +
-            disengagementCount + "/" +
-            activationThreshold
-        );*/
-
-        if (IsReady)
-        {
-            //Debug.Log("Long-Range Slow Attack Ready!");
-        }
+        Log("Disengagement counted: " + disengagementCount + "/" + activationThreshold +
+            " (distance " + distance.ToString("F2") + ")." +
+            (IsReady ? " LONG-RANGE READY; requires player outside close range to fire." : ""));
     }
 
     public void OnLongRangeExecuted()
     {
         disengagementCount = 0;
+        outsideTimer = 0f;
 
-        //Debug.Log("Disengagement Counter Reset.");
+        Log("Long-Range fired: counter reset to 0/" + activationThreshold +
+            ". Re-enter within " + engagementRange.ToString("F2") +
+            " before another disengagement can count.");
+    }
+
+    private void Log(string message)
+    {
+        if (logCounterEvents)
+            Debug.Log("[DisengagementCounter] " + message, this);
     }
 
     void OnDrawGizmosSelected()
@@ -105,11 +123,7 @@ public class DisengagementCounter : MonoBehaviour
             engagementRange
         );
 
-        /*Gizmos.color = Color.cyan;
-
-        Gizmos.DrawWireSphere(
-            transform.position,
-            engagementRange + exitBuffer
-        );*/
+        Gizmos.color = Color.cyan;
+        Gizmos.DrawWireSphere(transform.position, ExitThreshold);
     }
 }

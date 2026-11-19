@@ -44,7 +44,7 @@ public class PlayerHealth : MonoBehaviour
         OnDamageTaken?.Invoke(actualDamage);
         OnHealthChanged?.Invoke(CurrentHealth, MaxHealth);
 
-        Debug.Log("Player HP: " + CurrentHealth);
+        //Debug.Log("Player HP: " + CurrentHealth);
 
         if (CurrentHealth <= 0f)
         {
@@ -66,7 +66,7 @@ public class PlayerHealth : MonoBehaviour
 
         OnHealthChanged?.Invoke(CurrentHealth, MaxHealth);
 
-        Debug.Log("Player healed. HP: " + CurrentHealth);
+        //Debug.Log("Player healed. HP: " + CurrentHealth);
 
         if (!wasFullHealth && IsFullHealth)
         {

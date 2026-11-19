@@ -13,8 +13,14 @@ public class EnemyChaseAI : MonoBehaviour
     [Header("Stopping Distance")]
     public float stopDistance = 1.5f;
 
+    [Header("Anti-Jitter")]
+    [Tooltip("When Normal Attack is enabled and the stationary player is already in melee range, do not keep nudging the enemy toward the player between attacks.")]
+    [SerializeField] private bool holdPositionInsideNormalAttackRange = true;
+
     private Rigidbody2D rb;
     private EnemyAttackRecovery recovery;
+    private EnemyStateMachine stateMachine;
+    private EnemyMeleeAttack meleeAttack;
 
     private float ChaseSpeed => enemyMovementSpeed * speedMultiplier;
 
@@ -22,11 +28,17 @@ public class EnemyChaseAI : MonoBehaviour
     {
         rb = GetComponent<Rigidbody2D>();
         recovery = GetComponent<EnemyAttackRecovery>();
+        stateMachine = GetComponent<EnemyStateMachine>();
+        meleeAttack = GetComponent<EnemyMeleeAttack>();
     }
 
     private void FixedUpdate()
     {
         if (player == null)
+            return;
+
+        if (stateMachine != null &&
+            stateMachine.CurrentState != EnemyStateMachine.EnemyState.Chase)
             return;
 
         if (recovery != null && recovery.IsBusy)
@@ -40,6 +52,16 @@ public class EnemyChaseAI : MonoBehaviour
 
         if (distance <= stopDistance)
             return;
+
+        if (holdPositionInsideNormalAttackRange &&
+            stateMachine != null &&
+            stateMachine.NormalAttackEnabled &&
+            meleeAttack != null &&
+            meleeAttack.attackPrefab != null &&
+            distance <= meleeAttack.attackRange)
+        {
+            return;
+        }
 
         Vector2 moveDirection = direction.normalized;
         float moveDistance = Mathf.Min(
